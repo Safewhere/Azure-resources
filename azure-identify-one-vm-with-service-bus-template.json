@@ -1,0 +1,780 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "prefix": {
+            "defaultValue": "gt",
+            "type": "String"
+        },
+        "envTagValue": {
+            "defaultValue": "test",
+            "type": "String"
+        },  
+        "allowRDPIPAddress": {
+            "defaultValue": "178.21.254.234",
+            "type": "String"
+        },  
+        "location": {
+            "defaultValue": "westeurope",
+            "type": "String"
+        },
+        "secondaryLocation": {
+            "defaultValue": "northeurope",
+            "type": "String"
+        }, 
+        "storageType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GRS",
+                "Standard_RAGRS",
+                "Premium_LRS"
+            ]
+        }, 
+        "vmOS": {
+            "defaultValue": "2016-Datacenter",
+            "type": "String"
+        }, 
+        "vmSize": {
+            "defaultValue": "Standard_A3",
+            "type": "String"
+        }, 
+        "vmDiskSize": {
+            "defaultValue": 128,
+            "type": "Int"
+        },  
+        "vmadmin": {
+            "defaultValue": "vmadmin",
+            "type": "String"
+        },
+        "vmadminPassword": {
+            "defaultValue": "input_password",
+            "type": "String"
+        }, 
+        "sqlserverLogin": {
+            "defaultValue": "sqladmin",
+            "type": "String"
+        }, 
+        "sqlserverPassword": {
+            "defaultValue": "input_sqlpassword",
+            "type": "String"
+        }, 
+        "sqlserverCollation": {
+            "defaultValue": "SQL_Latin1_General_CP1_CI_AS",
+            "type": "String"
+        },  
+        "subnets_default_name": {
+            "defaultValue": "default",
+            "type": "String"
+        } 
+    },
+    "variables": {},
+    "resources": [
+        {
+            "comments": "Availability set for continuity of service incase failover or upgrading.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Compute/availabilitySets",
+            "sku": {
+                "name": "Aligned"
+            },
+            "name": "[concat(toLower(parameters('prefix')), 'avs01')]",
+            "apiVersion": "2017-12-01",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "platformUpdateDomainCount": 5,
+                "platformFaultDomainCount": 2,
+                "virtualMachines": [
+                    {
+                        "id": "[resourceId('Microsoft.Compute/virtualMachines', concat(toLower(parameters('prefix')), 'vm01'))]"
+                    }
+                ]
+            },
+            "dependsOn": [
+            ]
+        },
+        {
+            "comments": "Service bus for Identify on-cloud products.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.ServiceBus/namespaces",
+            "sku": {
+                "name": "Standard",
+                "tier": "Standard"
+            },
+            "name": "[concat(toLower(parameters('prefix')), 'namespaces01')]",
+            "apiVersion": "2017-04-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "scale": null,
+            "properties": {
+                "provisioningState": "Succeeded",
+                "metricId": "[concat('7b12e7b8-c0aa-4351-87a7-76a75357f74d:', concat(toLower(parameters('prefix')), 'namespaces01'))]",
+                "serviceBusEndpoint": "[concat('https://', concat(toLower(parameters('prefix')), 'namespaces01'),'.servicebus.windows.net:443/')]",
+                "status": "Active"
+            },
+            "dependsOn": []
+        }, 
+        {
+            "comments": "Virtual machine that will be used to host websites in IIS.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[concat(toLower(parameters('prefix')), 'vm01')]",
+            "apiVersion": "2017-12-01",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', concat(toLower(parameters('prefix')), 'avs01'))]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('vmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "[parameters('vmOS')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Windows",
+                        "name": "[concat(concat(toLower(parameters('prefix')), 'vm01'),'_OsDisk_1')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "managedDisk": {
+                            "storageAccountType": "Standard_LRS"
+                        },
+                        "diskSizeGB": "[parameters('vmDiskSize')]"
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[concat(toLower(parameters('prefix')), 'vm01')]",
+                    "adminUsername": "[parameters('vmadmin')]",
+                    "adminPassword": "[parameters('vmadminPassword')]",
+                    "windowsConfiguration": {
+                        "provisionVMAgent": true,
+                        "enableAutomaticUpdates": true
+                    },
+                    "secrets": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(toLower(parameters('prefix')), 'nic01'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[concat('https', '://', concat(toLower(parameters('prefix')), 'diagnostic01'), '.blob.core.windows.net', '/')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', concat(toLower(parameters('prefix')), 'avs01'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', concat(toLower(parameters('prefix')), 'nic01'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', concat(toLower(parameters('prefix')), 'diagnostic01'))]"
+            ]
+        },
+        {
+            "comments": "Network interface that provide public IP address or domain to access virtual machines and other services.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[concat(toLower(parameters('prefix')), 'nic01')]",
+            "apiVersion": "2018-02-01",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                
+                "resourceGuid": "1a96ec6a-b7cf-4bbd-8659-8d67dd986a3d",
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "etag": "W/\"2fbfb1c0-e9b1-4847-91c1-7f8ac42912ff\"",
+                        "properties": {
+                            
+                            "privateIPAddress": "10.0.0.4",
+                            "privateIPAllocationMethod": "Static",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(toLower(parameters('prefix')), 'pipaddress01'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(toLower(parameters('prefix')), 'vnet01'), parameters('subnets_default_name'))]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4",
+                            "loadBalancerBackendAddressPools": [
+                            ]
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": [],
+                    "appliedDnsServers": [],
+                    "internalDomainNameSuffix": "ocr5mp353hjejhkgpfwnom2azf.ax.internal.cloudapp.net"
+                },
+                "macAddress": "00-0D-3A-25-84-6B",
+                "enableAcceleratedNetworking": false,
+                "enableIPForwarding": false,
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(toLower(parameters('prefix')), 'nsgroup01'))]"
+                },
+                "primary": true
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', concat(toLower(parameters('prefix')), 'pipaddress01'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(toLower(parameters('prefix')), 'vnet01'), parameters('subnets_default_name'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', concat(toLower(parameters('prefix')), 'nsgroup01'))]"
+            ]
+        },
+        {
+            "comments": "A set of security rules are applied to the virtual network to allow remote desktop, HTTPs...",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "name": "[concat(toLower(parameters('prefix')), 'nsgroup01')]",
+            "apiVersion": "2018-02-01",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                
+                "resourceGuid": "5ca3af97-9973-4898-b221-de960c192f3f",
+                "securityRules": [
+                    {
+                        "name": "default-allow-rdp",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "3389",
+                            "sourceAddressPrefix": "[parameters('allowRDPIPAddress')]",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1000,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "https",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "443",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 1010,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ],
+                "defaultSecurityRules": [
+                    {
+                        "name": "AllowVnetInBound",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            
+                            "description": "Allow inbound traffic from all VMs in VNET",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "destinationAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 65000,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "DenyAllInBound",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            
+                            "description": "Deny all inbound traffic",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Deny",
+                            "priority": 65500,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "AllowVnetOutBound",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            
+                            "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "destinationAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 65000,
+                            "direction": "Outbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "AllowInternetOutBound",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            
+                            "description": "Allow outbound traffic from all VMs to Internet",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "Internet",
+                            "access": "Allow",
+                            "priority": 65001,
+                            "direction": "Outbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    },
+                    {
+                        "name": "DenyAllOutBound",
+                        "etag": "W/\"ce00aebc-1094-4ff2-b6b4-91addaeedb52\"",
+                        "properties": {
+                            
+                            "description": "Deny all outbound traffic",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Deny",
+                            "priority": 65500,
+                            "direction": "Outbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "Public IP address to map domain or remote desktop.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Network/publicIPAddresses",
+            "sku": {
+                "name": "Basic",
+                "tier": "Regional"
+            },
+            "name": "[concat(toLower(parameters('prefix')), 'pipaddress01')]",
+            "apiVersion": "2018-02-01",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                
+                "resourceGuid": "2bf9b781-8b1d-4e3e-ab1c-32bdb7ddd0ff",
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static",
+                "idleTimeoutInMinutes": 4,
+                "ipTags": []
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "Virtual network to enable internal traffic between resources.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Network/virtualNetworks",
+            "name": "[concat(toLower(parameters('prefix')), 'vnet01')]",
+            "apiVersion": "2018-02-01",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                
+                "resourceGuid": "3ff6a370-e9bf-44d2-9d46-796cd73380cd",
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.0.0/24"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "etag": "W/\"d5181a52-9cb6-4f0a-893f-7377a31ca0eb\"",
+                        "properties": {
+                            
+                            "addressPrefix": "10.0.0.0/24",
+                            "serviceEndpoints": [
+                                {
+                                    "provisioningState": "Succeeded",
+                                    "service": "Microsoft.Sql",
+                                    "locations": [
+                                        "[parameters('location')]"
+                                    ]
+                                }
+                            ]                            
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false,
+                "enableVmProtection": false
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "SQL Server to host Azure SQL databases.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers",
+            "kind": "v12.0",
+            "name": "[concat(toLower(parameters('prefix')), 'sqlserver01')]",
+            "apiVersion": "2015-05-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "administratorLogin": "[parameters('sqlserverLogin')]",
+                "administratorLoginPassword": "[parameters('sqlserverPassword')]",
+                "version": "12.0"
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "Network rule to allow internal access to SQL Server form the virtual network.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/virtualNetworkRules",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'sqlnsrule01')]",
+            "apiVersion": "2015-05-01-preview",
+            "scale": null,
+            "properties": {
+                "virtualNetworkSubnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(toLower(parameters('prefix')), 'vnet01'), parameters('subnets_default_name'))]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(toLower(parameters('prefix')), 'vnet01'), parameters('subnets_default_name'))]"
+            ]
+        }, 
+        {
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/fwrule01')]",
+            "type": "Microsoft.Sql/servers/firewallrules",
+            "apiVersion": "2014-04-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+               "startIpAddress": "[parameters('allowRDPIPAddress')]",
+               "endIpAddress": "[parameters('allowRDPIPAddress')]"
+            },
+            "dependsOn": [
+               "[concat(toLower(parameters('prefix')), 'sqlserver01')]"
+           ]
+        }, 
+        {
+            "comments": "Default storage account for diagnostic purpose of virtual machines.",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "[parameters('storageType')]",
+                "tier": "Standard"
+            },
+            "kind": "Storage",
+            "name": "[concat(toLower(parameters('prefix')), 'diagnostic01')]",
+            "apiVersion": "2018-02-01",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "scale": null,
+            "properties": {
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "virtualNetworkRules": [],
+                    "ipRules": [],
+                    "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": false,
+                "encryption": {
+                    "services": {
+                        "file": {
+                            "enabled": true
+                        },
+                        "blob": {
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "Subnets of the virtual network.",
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'vnet01'), '/', parameters('subnets_default_name'))]",
+            "apiVersion": "2018-02-01",
+            "scale": null,
+            "properties": {
+                
+                "addressPrefix": "10.0.0.0/24",
+                "serviceEndpoints": [
+                    {
+                        "provisioningState": "Succeeded",
+                        "service": "Microsoft.Sql",
+                        "locations": [
+                            "[parameters('location')]"
+                        ]
+                    }
+                ]                
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', concat(toLower(parameters('prefix')), 'vnet01'))]"
+            ]
+        },
+        {
+            "comments": "Identify",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/databases",
+            "kind": "v12.0,user",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'Identify')]",
+            "apiVersion": "2014-04-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "edition": "Standard",
+                "status": "Online",
+                "serviceLevelObjective": "S0",
+                "collation": "[parameters('sqlserverCollation')]",
+                "maxSizeBytes": "268435456000",
+                "currentServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveName": "S0",
+                "sampleName": null,
+                "defaultSecondaryLocation": "[parameters('secondaryLocation')]",
+                "earliestRestoreDate": "2018-05-30T00:00:00Z",
+                "elasticPoolName": null,
+                "containmentState": 2,
+                "readScale": "Disabled",
+                "failoverGroupId": null,
+                "zoneRedundant": null,
+                "isUpgradeRequested": false
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]"
+            ]
+        },
+        {
+            "comments": "IdentifyAudit",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/databases",
+            "kind": "v12.0,user",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'IdentifyAudit')]",
+            "apiVersion": "2014-04-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "edition": "Standard",
+                "status": "Online",
+                "serviceLevelObjective": "S0",
+                "collation": "[parameters('sqlserverCollation')]",
+                "maxSizeBytes": "268435456000",
+                "currentServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveName": "S0",
+                "sampleName": null,
+                "defaultSecondaryLocation": "[parameters('secondaryLocation')]",
+                "earliestRestoreDate": "2018-05-30T00:00:00Z",
+                "elasticPoolName": null,
+                "containmentState": 2,
+                "readScale": "Disabled",
+                "failoverGroupId": null,
+                "zoneRedundant": null,
+                "isUpgradeRequested": false
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]"
+            ]
+        },
+        {
+            "comments": "IdentifyCache",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/databases",
+            "kind": "v12.0,user",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'IdentifyCache')]",
+            "apiVersion": "2014-04-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "edition": "Standard",
+                "status": "Online",
+                "serviceLevelObjective": "S0",
+                "collation": "[parameters('sqlserverCollation')]",
+                "maxSizeBytes": "268435456000",
+                "currentServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveName": "S0",
+                "sampleName": null,
+                "defaultSecondaryLocation": "[parameters('secondaryLocation')]",
+                "earliestRestoreDate": "2018-05-30T00:00:00Z",
+                "elasticPoolName": null,
+                "containmentState": 2,
+                "readScale": "Disabled",
+                "failoverGroupId": null,
+                "zoneRedundant": null,
+                "isUpgradeRequested": false
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]"
+            ]
+        },
+        {
+            "comments": "IdentifySession",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/databases",
+            "kind": "v12.0,user",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'IdentifySession')]",
+            "apiVersion": "2014-04-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "edition": "Standard",
+                "status": "Online",
+                "serviceLevelObjective": "S0",
+                "collation": "[parameters('sqlserverCollation')]",
+                "maxSizeBytes": "268435456000",
+                "currentServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveName": "S0",
+                "sampleName": null,
+                "defaultSecondaryLocation": "[parameters('secondaryLocation')]",
+                "earliestRestoreDate": "2018-05-30T00:00:00Z",
+                "elasticPoolName": null,
+                "containmentState": 2,
+                "readScale": "Disabled",
+                "failoverGroupId": null,
+                "zoneRedundant": null,
+                "isUpgradeRequested": false
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]"
+            ]
+        },
+        {
+            "comments": "IdentifySessionState",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/databases",
+            "kind": "v12.0,user",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'IdentifySessionState')]",
+            "apiVersion": "2014-04-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "edition": "Standard",
+                "status": "Online",
+                "serviceLevelObjective": "S0",
+                "collation": "[parameters('sqlserverCollation')]",
+                "maxSizeBytes": "268435456000",
+                "currentServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveName": "S0",
+                "sampleName": null,
+                "defaultSecondaryLocation": "[parameters('secondaryLocation')]",
+                "earliestRestoreDate": "2018-05-30T00:00:00Z",
+                "elasticPoolName": null,
+                "containmentState": 2,
+                "readScale": "Disabled",
+                "failoverGroupId": null,
+                "zoneRedundant": null,
+                "isUpgradeRequested": false
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]"
+            ]
+        },
+        {
+            "comments": "IdentifyTenant",
+            "tags": {
+                "env": "[parameters('envTagValue')]"
+            },
+            "type": "Microsoft.Sql/servers/databases",
+            "kind": "v12.0,user",
+            "name": "[concat(concat(toLower(parameters('prefix')), 'sqlserver01'), '/', 'IdentifyTenant')]",
+            "apiVersion": "2014-04-01-preview",
+            "location": "[parameters('location')]",
+            "scale": null,
+            "properties": {
+                "edition": "Standard",
+                "status": "Online",
+                "serviceLevelObjective": "S0",
+                "collation": "[parameters('sqlserverCollation')]",
+                "maxSizeBytes": "268435456000",
+                "currentServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveId": "f1173c43-91bd-4aaa-973c-54e79e15235b",
+                "requestedServiceObjectiveName": "S0",
+                "sampleName": null,
+                "defaultSecondaryLocation": "[parameters('secondaryLocation')]",
+                "earliestRestoreDate": "2018-05-30T00:00:00Z",
+                "elasticPoolName": null,
+                "containmentState": 2,
+                "readScale": "Disabled",
+                "failoverGroupId": null,
+                "zoneRedundant": null,
+                "isUpgradeRequested": false
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', concat(toLower(parameters('prefix')), 'sqlserver01'))]"
+            ]
+        }
+    ]
+}
