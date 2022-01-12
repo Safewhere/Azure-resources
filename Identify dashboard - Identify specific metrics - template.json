@@ -1,0 +1,833 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "dashboardName": {
+      "value": "[#dashboardName]",
+	  "metadata": {
+        "description": "Parameterized template doesn't work. Ctrl + H to replace all occurrences of [#dashboardName] with a name, e.g. Identify dashboard for identify.safewhere.local"
+      }
+    },
+	"subscription": {
+      "value": "[#subscriptionId]",
+	  "metadata": {
+        "description": "Parameterized template doesn't work. Ctrl + H to replace all occurrences of [#subscriptionId] with a correct subscription id which is a GUID"
+      }
+	},
+	"resourceGroup": {
+      "value": "[#resourceGroup]",
+	  "metadata": {
+        "description": "Parameterized template doesn't work. Ctrl + H to replace all occurrences of [#resourceGroup] with a resource group name, e.g. TEST or PROD"
+      }
+	},
+	"applicationInsightsAccount": {
+      "value": "[#applicationInsightsAccount]",
+	  "metadata": {
+        "description": "Parameterized template doesn't work. Ctrl + H to replace all occurrences of [#applicationInsightsAccount] with an Application Insights name (not the instrumental key)"
+      }
+	}
+  },
+  "properties": {
+    "lenses": {
+      "0": {
+        "order": 0,
+        "parts": {
+          "0": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "timestamp",
+                      "type": "datetime"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "avgRequestDuration",
+                        "type": "real"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// Response time trend  \n// Chart request duration over the last 7 days hours. \nrequests \n| where timestamp > ago(7d) and (name == \"GET PlugIn/Resolve\" or name == \"POST PlugIn/Resolve\") and duration < 2000  \n| summarize avgRequestDuration=avg(duration) by bin(timestamp, 10m) // use a time grain of 10 minutes \n| render timechart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "10745a60-35b2-482c-af2e-7bff6d0113e2",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Line",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Response time trend  - login requests",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "1": {
+            "position": {
+              "x": 0,
+              "y": 4,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "performanceBucket",
+                      "type": "string"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "requestCount",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// Response time buckets  \n// Show how many requests are in each performance-bucket.  \nrequests \n| where timestamp > ago(7d) and (name == \"GET PlugIn/Resolve\" or name == \"POST PlugIn/Resolve\")  \n| summarize requestCount=sum(itemCount), avgDuration=avg(duration) by performanceBucket \n| order by avgDuration asc // sort by average request duration \n| project-away avgDuration // no need to display avgDuration, we used it only for sorting results \n| render barchart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "1c41a885-ddea-4bfb-a0f8-81220085f18f",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "StackedBar",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "response time bucket the last 7 days",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "2": {
+            "position": {
+              "x": 6,
+              "y": 4,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "performanceBucket",
+                      "type": "string"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "requestCount",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// Response time buckets  \r\n// Show how many requests are in each performance-bucket.  \r\nrequests \r\n| where timestamp > ago(7d) and (name == \"GET PlugIn/Resolve\" or name == \"POST PlugIn/Resolve\")  \r\n| summarize requestCount=sum(itemCount), avgDuration=avg(duration) by performanceBucket \r\n| order by avgDuration asc // sort by average request duration \r\n| project-away avgDuration // no need to display avgDuration, we used it only for sorting results \r\n| render piechart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "13ebb6f1-151b-4bff-8117-377c97f15b81",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Pie",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "response time bucket the last 7 days",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "3": {
+            "position": {
+              "x": 0,
+              "y": 8,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "timestamp",
+                      "type": "datetime"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "totalCount",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// Average logins per minute count trend. Estimated by assuming that a login needs 4 requests \n// Chart count over the last 7.  \nrequests \n| where timestamp > ago(7d) and (name == \"GET PlugIn/Resolve\" or name == \"POST PlugIn/Resolve\") \n| summarize totalCount=sum(itemCount)/4 by bin(timestamp, 1m) \n| render timechart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "6d9e7dc7-4556-4cf8-af3a-ec89373c9292",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Line",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Average logins per minute count trend",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "4": {
+            "position": {
+              "x": 6,
+              "y": 8,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "timestamp",
+                      "type": "datetime"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "totalCount",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// // Average logins per minute count trend using Identify’s log for SAML tokens \ntraces  \n| where customDimensions.EventId == 5511 \n| summarize totalCount=sum(itemCount) by bin(timestamp, 1m) \n| render timechart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "106c9df6-12d4-439b-b21e-c911981545e7",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "value": "P1D",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Line",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Average logins per minute count trend using Identify’s log for SAML tokens ",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "5": {
+            "position": {
+              "x": 0,
+              "y": 12,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "name",
+                      "type": "string"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "failedCount",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// Failed requests – top 10  \r\n// What are the 3 slowest pages, and how slow are they?  \r\nrequests \r\n| where timestamp > ago(7d) and success == false \r\n| summarize failedCount=sum(itemCount) by name \r\n| top 10 by failedCount desc \r\n| render barchart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "423cf9ee-5898-4509-9687-90eb231c2e25",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "StackedBar",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Failed requests – top 10 ",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "6": {
+            "position": {
+              "x": 6,
+              "y": 12,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "// Exceptions causing request failures  \n// Find which exceptions led to failed requests in the past hour.  \nrequests \n| where timestamp > ago(14d) and success == false \n| join kind= inner ( \nexceptions \n| where timestamp > ago(14d) \n) on operation_Id \n| project exceptionType = type, failedMethod = method, requestName = name, requestDuration = duration \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "3b800c32-9dfa-41e1-8155-7d712e60c7ed",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "AnalyticsGrid",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Exceptions causing request failures  ",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          },
+          "7": {
+            "position": {
+              "x": 12,
+              "y": 12,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "[#subscriptionId]",
+                    "ResourceGroup": "[#resourceGroup]",
+                    "Name": "[#applicationInsightsAccount]",
+                    "ResourceId": "/subscriptions/[#subscriptionId]/resourceGroups/[#resourceGroup]/providers/microsoft.insights/components/[#applicationInsightsAccount]"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Dimensions",
+                  "value": {
+                    "xAxis": {
+                      "name": "timestamp",
+                      "type": "datetime"
+                    },
+                    "yAxis": [
+                      {
+                        "name": "totalCount",
+                        "type": "long"
+                      }
+                    ],
+                    "splitBy": [],
+                    "aggregation": "Sum"
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "Query",
+                  "value": "traces  \r\n| where timestamp > ago(14d) and customDimensions.LogLevel == \"ERROR\" and customDimensions.Message contains \"InvalidContextException\" \r\n| summarize totalCount=sum(itemCount) by bin(timestamp, 30m) \r\n| render timechart \n",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartTitle",
+                  "value": "Analytics",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartSubTitle",
+                  "value": "[#applicationInsightsAccount]",
+                  "isOptional": true
+                },
+                {
+                  "name": "PartId",
+                  "value": "12238806-12be-4df6-a412-0df15ce54391",
+                  "isOptional": true
+                },
+                {
+                  "name": "Version",
+                  "value": "1.0",
+                  "isOptional": true
+                },
+                {
+                  "name": "resourceTypeMode",
+                  "value": "components",
+                  "isOptional": true
+                },
+                {
+                  "name": "TimeRange",
+                  "isOptional": true
+                },
+                {
+                  "name": "DashboardId",
+                  "isOptional": true
+                },
+                {
+                  "name": "ControlType",
+                  "value": "FrameControlChart",
+                  "isOptional": true
+                },
+                {
+                  "name": "SpecificChart",
+                  "value": "Line",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AnalyticsPart",
+              "settings": {
+                "content": {
+                  "PartTitle": "Numbers of context id errors every 30 minutes",
+                  "PartSubTitle": "Identify tile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "model": {
+        "timeRange": {
+          "value": {
+            "relative": {
+              "duration": 24,
+              "timeUnit": 1
+            }
+          },
+          "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+        },
+        "filterLocale": {
+          "value": "en-us"
+        },
+        "filters": {
+          "value": {
+            "MsPortalFx_TimeRange": {
+              "model": {
+                "format": "utc",
+                "granularity": "auto",
+                "relative": "24h"
+              },
+              "displayCache": {
+                "name": "UTC Time",
+                "value": "Past 24 hours"
+              },
+              "filteredPartIds": [
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f007",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f009",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f00b",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f00d",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f00f",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f011",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f013",
+                "StartboardPart-AnalyticsPart-1aa8bd60-5d42-4b07-9d9f-9386b504f017"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "[#dashboardName]",
+  "type": "Microsoft.Portal/dashboards",
+  "location": "INSERT LOCATION",
+  "tags": {
+    "hidden-title": "[#dashboardName]"
+  },
+  "apiVersion": "2015-08-01-preview"
+}
